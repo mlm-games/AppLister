@@ -1,6 +1,5 @@
 package app.applister.ui.screens
 
-import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -74,7 +73,6 @@ import app.applister.AppGraph
 import app.applister.R
 import app.applister.data.model.AppInfo
 import app.applister.data.repository.AppSettings
-import app.applister.data.model.SortMode
 import app.applister.helper.ShareUtils
 import app.applister.ui.components.AboutDialog
 import app.applister.ui.components.AppIcon
@@ -85,7 +83,6 @@ import app.applister.ui.components.RestoreSummaryDialog
 import app.applister.ui.components.SearchBar
 import app.applister.ui.components.SortDialog
 import app.applister.viewmodel.AppListViewModel
-import app.applister.viewmodel.SnackbarState
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
