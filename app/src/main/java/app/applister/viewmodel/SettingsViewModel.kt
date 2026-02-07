@@ -22,4 +22,10 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
             repo.update(transform)
         }
     }
+
+    fun set(name: String, value: Any) {
+        viewModelScope.launch {
+            repo.set(name, value)
+        }
+    }
 }
