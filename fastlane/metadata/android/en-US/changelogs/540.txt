@@ -1,0 +1,3 @@
+- Use nav 3
+- Remove all old rules (and do not use AutoSettingsScreen, until i update it to look like CCLauncher's settings screen...)
+- Migrate to my settings library
