@@ -1,9 +1,12 @@
 package app.applister.ui.screens
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.Icon
@@ -34,13 +37,20 @@ fun SettingsScreen(
     SettingsScaffold(
         title = stringResource(R.string.settings),
         onBack = onBack
-    ) { _ ->
-        AutoSettingsScreen(
-            schema = AppSettingsSchema,
-            value = settings,
-            onSet = { name, value -> vm.set(name, value) },
-            modifier = Modifier.fillMaxSize()
-        )
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            AutoSettingsScreen(
+                schema = AppSettingsSchema,
+                value = settings,
+                onSet = { name, value -> vm.set(name, value) },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        top = paddingValues.calculateTopPadding(),
+                        bottom = paddingValues.calculateBottomPadding(),
+                    )
+            )
+        }
     }
 }
 
