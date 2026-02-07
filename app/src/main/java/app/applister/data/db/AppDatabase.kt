@@ -11,7 +11,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         fun build(context: Context): AppDatabase =
-            Room.databaseBuilder(context, AppDatabase::class.java, "myapplist.db")
+            Room.databaseBuilder(context, AppDatabase::class.java, "applister.db")
                 .fallbackToDestructiveMigration()
                 .build()
     }

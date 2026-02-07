@@ -2,7 +2,7 @@ package app.applister.data
 
 object Constants {
     const val BACKUP_DIR = "backups"
-    const val BACKUP_PREFIX = "myapplist-backup"
+    const val BACKUP_PREFIX = "applister-backup"
     const val MAX_AUTO_BACKUPS = 30
 
     object ExportFormat {

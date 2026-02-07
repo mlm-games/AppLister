@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "MyAppList"
+rootProject.name = "AppLister"
 include(":app")

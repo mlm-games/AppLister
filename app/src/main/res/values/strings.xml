@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">MyAppList</string>
+    <string name="app_name">AppLister</string>
     <string name="search_hint">Search apps…</string>
     <string name="no_apps_found">No apps found</string>
     <string name="all_apps">All Apps</string>

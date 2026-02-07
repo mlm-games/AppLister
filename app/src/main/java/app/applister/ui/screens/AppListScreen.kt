@@ -393,7 +393,7 @@ fun AppListScreen(
                 val mime = ShareUtils.getMimeType(format)
                 ShareUtils.shareTextFile(
                     ctx,
-                    "myapplist.$ext",
+                    "applister.$ext",
                     content,
                     mime
                 )
