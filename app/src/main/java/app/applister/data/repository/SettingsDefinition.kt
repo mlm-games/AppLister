@@ -36,6 +36,15 @@ data class AppSettings(
     val defaultFilter: Int = 0,
 
     @Setting(
+        title = "Preferred app store",
+        description = "Store to open when getting apps",
+        category = General::class,
+        type = Dropdown::class,
+        options = ["Google Play", "F-Droid", "Amazon Appstore", "Galaxy Store", "AppGallery"]
+    )
+    val preferredStore: Int = 0,
+
+    @Setting(
         title = "Show package name",
         description = "Show package name under app name in the list",
         category = General::class,

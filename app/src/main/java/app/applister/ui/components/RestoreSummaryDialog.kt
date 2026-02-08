@@ -1,8 +1,6 @@
 package app.applister.ui.components
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,15 +25,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.applister.AppGraph
 import app.applister.R
+import app.applister.data.model.AppStore
 import app.applister.data.model.RestoreResult
 import app.applister.data.model.RestoredApp
+import app.applister.data.repository.AppSettings
 
 @Composable
 fun RestoreSummaryDialog(
@@ -43,6 +47,8 @@ fun RestoreSummaryDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    val settings by remember { AppGraph.settings.flow }.collectAsState(initial = AppSettings())
+    val preferredStore = remember(settings.preferredStore) { AppStore.fromIndex(settings.preferredStore) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -112,7 +118,7 @@ fun RestoreSummaryDialog(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         items(result.missingApps, key = { it.packageName }) { app ->
-                            MissingAppItem(app = app, context = context)
+                            MissingAppItem(app = app, context = context, store = preferredStore)
                         }
                     }
                 }
@@ -168,7 +174,7 @@ fun RestoreSummaryDialog(
             if (result.missingApps.isNotEmpty()) {
                 TextButton(onClick = {
                     result.missingApps.forEach { app ->
-                        openPlayStore(context, app.packageName)
+                        preferredStore.openApp(context, app.packageName)
                     }
                     onDismiss()
                 }) {
@@ -185,7 +191,7 @@ fun RestoreSummaryDialog(
 }
 
 @Composable
-private fun MissingAppItem(app: RestoredApp, context: Context) {
+private fun MissingAppItem(app: RestoredApp, context: Context, store: AppStore) {
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
@@ -217,7 +223,7 @@ private fun MissingAppItem(app: RestoredApp, context: Context) {
                     )
                 }
             }
-            IconButton(onClick = { openPlayStore(context, app.packageName) }) {
+            IconButton(onClick = { store.openApp(context, app.packageName) }) {
                 Icon(
                     Icons.Default.GetApp,
                     contentDescription = stringResource(R.string.install_from_play_store),
@@ -228,17 +234,3 @@ private fun MissingAppItem(app: RestoredApp, context: Context) {
     }
 }
 
-private fun openPlayStore(context: Context, packageName: String) {
-    try {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName"))
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
-    } catch (_: Exception) {
-        val intent = Intent(
-            Intent.ACTION_VIEW,
-            Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
-        )
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
-    }
-}

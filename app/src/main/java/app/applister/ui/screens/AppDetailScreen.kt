@@ -31,6 +31,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,8 +41,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.applister.AppGraph
 import app.applister.R
 import app.applister.data.model.AppInfo
+import app.applister.data.model.AppStore
+import app.applister.data.repository.AppSettings
 import app.applister.ui.components.AppIcon
 import app.applister.ui.components.AppTopBar
 import app.applister.viewmodel.AppDetailViewModel
@@ -56,6 +61,7 @@ fun AppDetailScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val settings by AppGraph.settings.flow.collectAsState(initial = AppSettings())
 
     val appInfo: AppInfo? = remember(packageName) {
         try {
@@ -234,7 +240,10 @@ fun AppDetailScreen(
                                 Text(stringResource(R.string.open))
                             }
                             FilledTonalButton(
-                                onClick = { vm.openPlayStore(context, appInfo.packageName) },
+                                onClick = {
+                                    val store = AppStore.fromIndex(settings.preferredStore)
+                                    vm.openAppStore(context, appInfo.packageName, store)
+                                },
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Icon(
@@ -252,7 +261,8 @@ fun AppDetailScreen(
                         ) {
                             OutlinedButton(
                                 onClick = {
-                                    vm.shareApp(context, appInfo.packageName, appInfo.appName)
+                                    val store = AppStore.fromIndex(settings.preferredStore)
+                                    vm.shareApp(context, appInfo.packageName, appInfo.appName, store)
                                 },
                                 modifier = Modifier.weight(1f)
                             ) {
