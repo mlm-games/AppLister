@@ -1,6 +1,11 @@
-An IR remote app inspired by the now archived IR-Remote (by divested group)
+AppLister is a straightforward Android application for viewing and exporting your installed apps.
 
 Features:
-
-- Export or Import Remotes via JSON
-- Supports many formats (NEC, PRONTO, RC5, RC6, Samsung or Raw)
+- Browse all installed applications with search functionality
+- Filter between all apps, user apps, or system apps
+- Sort by name, install date, update date, size, or package name
+- Export your app list in Markdown, Plain Text, JSON, or HTML formats
+- Create backups of your app lists with automatic backup option
+- Restore from previously exported JSON backups
+- View detailed app information including version, install date, and APK size
+- Launch apps, open in Play Store, share, or uninstall directly from the app
