@@ -3,6 +3,7 @@
 ![Banner](fastlane/metadata/android/en-US/images/banner.svg)
 
 A simple Android app for listing installed applications. Export your app list in Markdown, Plain Text, JSON, or HTML formats. Backup and restore functionality included.
+Will kinda be in an archive state, only being updated if the app is broken (or similar). PRs for feature requests are welcome
 
 [//]: # ([<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroidButtonGreyBorder_nofont.png" height="80" alt="Get it at IzzyOnDroid">]&#40;https://apt.izzysoft.de/packages/app.applister&#41;)
 
