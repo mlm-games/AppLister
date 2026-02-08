@@ -24,6 +24,25 @@ android {
         vectorDrawables.useSupportLibrary = true
     }
 
+    val enableApkSplits = (providers.gradleProperty("enableApkSplits").orNull ?: "true").toBoolean()
+    val includeUniversalApk = (providers.gradleProperty("includeUniversalApk").orNull ?: "true").toBoolean()
+    val targetAbi = providers.gradleProperty("targetAbi").orNull
+
+    splits {
+        abi {
+            isEnable = enableApkSplits
+            reset()
+            if (enableApkSplits) {
+                if (targetAbi != null) {
+                    include(targetAbi)
+                } else {
+                    include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+                }
+            }
+            isUniversalApk = includeUniversalApk && enableApkSplits
+        }
+    }
+
     signingConfigs {
         create("release") {
             storeFile = file(System.getenv("KEYSTORE_PATH") ?: "${rootProject.projectDir}/release.keystore")
