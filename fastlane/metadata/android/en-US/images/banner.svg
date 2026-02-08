@@ -5,15 +5,15 @@
    viewBox="0 0 1280 720"
    version="1.1"
    xmlns="http://www.w3.org/2000/svg">
-  <rect width="1280" height="720" fill="#263238"/>
+  <rect width="1280" height="720" fill="#ecf67b"/>
   <g transform="translate(384, 80) scale(1.1)">
     <g transform="translate(0,240.00002)">
       <path
          d="M 85.991518,104.40726 113.87433,76.524452 H 85.991518 Z"
-         style="fill:#00796B;stroke:#FFFFFF;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+         style="fill:#ecf67b;stroke:#2c2ca0;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
          id="path12" />
       <rect
-         style="fill:#00796B;stroke:#FFFFFF;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke fill markers"
+         style="fill:#ecf67b;stroke:#2c2ca0;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke fill markers"
          id="rect2"
          width="160.14792"
          height="178.29276"
@@ -22,20 +22,20 @@
          ry="70.212639" />
       <path
          d="M 150.68181,185.14352 V 83.217741 L 99.718913,134.18063 Z"
-         style="fill:#00796B;stroke:#FFFFFF;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+         style="fill:#ecf67b;stroke:#2c2ca0;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
          id="path11" />
     </g>
     <g transform="translate(-115.10122,-1.4443919)">
       <path
          d="m 418.63787,236.67257 h -76.67969 l 38.33984,38.33985 z"
-         style="fill:#00796B;stroke:#FFFFFF;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+         style="fill:#ecf67b;stroke:#2c2ca0;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
          id="path9" />
       <path
          d="m 407.86373,215.09961 -34.98242,34.98437 h 34.98242 z"
-         style="fill:#00796B;stroke:#FFFFFF;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+         style="fill:#ecf67b;stroke:#2c2ca0;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
          id="path8" />
       <rect
-         style="fill:#00796B;stroke:#FFFFFF;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke fill markers"
+         style="fill:#ecf67b;stroke:#2c2ca0;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke fill markers"
          id="rect12"
          width="160.14792"
          height="178.29276"
@@ -44,20 +44,20 @@
          ry="70.212639" />
       <path
          d="m 363.685,218.0988 v 79.83594 l 39.91797,-39.91797 z"
-         style="fill:#00796B;stroke:#FFFFFF;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+         style="fill:#ecf67b;stroke:#2c2ca0;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
          id="path7" />
     </g>
     <g transform="translate(219.99998,-240.00002)">
       <path
          d="m 137.22613,293.00008 -34.39648,34.39649 h 68.79297 z"
-         style="fill:#00796B;stroke:#FFFFFF;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+         style="fill:#ecf67b;stroke:#2c2ca0;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
          id="path4" />
       <path
          d="m 220.46664,375.52004 -48.48437,-48.48437 v 48.48437 z"
-         style="fill:#00796B;stroke:#FFFFFF;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+         style="fill:#ecf67b;stroke:#2c2ca0;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
          id="path10" />
       <rect
-         style="fill:#00796B;stroke:#FFFFFF;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke fill markers"
+         style="fill:#ecf67b;stroke:#2c2ca0;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke fill markers"
          id="rect13"
          width="160.14792"
          height="178.29276"
@@ -66,7 +66,7 @@
          ry="70.212639" />
       <path
          d="m 124.28826,346.33031 63.4707,63.47266 v -63.47266 z"
-         style="fill:#00796B;stroke:#FFFFFF;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+         style="fill:#ecf67b;stroke:#2c2ca0;stroke-width:16.873;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
          id="path5" />
     </g>
   </g>
