@@ -1,3 +1,18 @@
+## v1.0.2
+
+- use the old banner, add simple monochrome icon
+- Better contrast and clean svgs
+- Add snackbar error management
+- test appstore impl (inapp only works for play)
+- rem unused
+- fix build
+- Add readme and stuff
+- fix settings padding
+- Use AutoSettingsScreen
+- Add uninstall perms, and fix more warns
+- first commit
+
+
 ## v1.0.1
 
 - Better contrast and clean svgs
