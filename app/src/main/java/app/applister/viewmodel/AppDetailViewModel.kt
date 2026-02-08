@@ -7,6 +7,7 @@ import android.provider.Settings
 import androidx.lifecycle.ViewModel
 import androidx.core.net.toUri
 import app.applister.data.model.AppStore
+import app.applister.data.model.StoreOpenResult
 
 class AppDetailViewModel : ViewModel() {
 
@@ -17,29 +18,8 @@ class AppDetailViewModel : ViewModel() {
         return true
     }
 
-    fun openAppStore(context: Context, packageName: String, store: AppStore = AppStore.PLAY_STORE) {
-        try {
-            val intent = when (store) {
-                AppStore.PLAY_STORE -> Intent(Intent.ACTION_VIEW, "market://details?id=$packageName".toUri())
-                AppStore.FDROID -> Intent(Intent.ACTION_VIEW, Uri.parse("fdroid.app://details?id=$packageName"))
-                AppStore.AMAZON -> Intent(Intent.ACTION_VIEW, Uri.parse("amzn://apps/android?p=$packageName"))
-                AppStore.SAMSUNG -> Intent(Intent.ACTION_VIEW, Uri.parse("samsungapps://ProductDetail/$packageName"))
-                AppStore.HUAWEI -> Intent(Intent.ACTION_VIEW, Uri.parse("appmarket://details?id=$packageName"))
-            }
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(intent)
-        } catch (_: Exception) {
-            val fallbackUrl = when (store) {
-                AppStore.PLAY_STORE -> "https://play.google.com/store/apps/details?id=$packageName"
-                AppStore.FDROID -> "https://f-droid.org/packages/$packageName"
-                AppStore.AMAZON -> "https://www.amazon.com/gp/mas/dl/android?p=$packageName"
-                AppStore.SAMSUNG -> "https://galaxystore.samsung.com/detail/$packageName"
-                AppStore.HUAWEI -> "https://appgallery.huawei.com/app/$packageName"
-            }
-            val intent = Intent(Intent.ACTION_VIEW, fallbackUrl.toUri())
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(intent)
-        }
+    fun openAppStore(context: Context, packageName: String, store: AppStore = AppStore.PLAY_STORE): StoreOpenResult {
+        return store.openApp(context, packageName)
     }
 
     fun openAppInfo(context: Context, packageName: String) {

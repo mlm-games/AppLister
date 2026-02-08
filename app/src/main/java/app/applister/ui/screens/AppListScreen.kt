@@ -407,7 +407,12 @@ fun AppListScreen(
     if (currentResult != null) {
         RestoreSummaryDialog(
             result = currentResult,
-            onDismiss = { vm.dismissRestoreResult() }
+            onDismiss = { vm.dismissRestoreResult() },
+            onStoreError = { message ->
+                scope.launch {
+                    snackbarHostState.showSnackbar(message)
+                }
+            }
         )
     }
 }

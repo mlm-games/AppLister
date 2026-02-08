@@ -39,16 +39,30 @@ import app.applister.R
 import app.applister.data.model.AppStore
 import app.applister.data.model.RestoreResult
 import app.applister.data.model.RestoredApp
+import app.applister.data.model.StoreOpenResult
 import app.applister.data.repository.AppSettings
 
 @Composable
 fun RestoreSummaryDialog(
     result: RestoreResult,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onStoreError: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val settings by remember { AppGraph.settings.flow }.collectAsState(initial = AppSettings())
     val preferredStore = remember(settings.preferredStore) { AppStore.fromIndex(settings.preferredStore) }
+    
+    fun openStoreWithErrorHandling(packageName: String) {
+        when (val result = preferredStore.openApp(context, packageName)) {
+            is StoreOpenResult.Success -> { /* No action needed */ }
+            is StoreOpenResult.NoAppFound -> {
+                onStoreError(preferredStore.getMissingStoreMessage())
+            }
+            is StoreOpenResult.Error -> {
+                onStoreError("Error: ${result.message}")
+            }
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -118,7 +132,12 @@ fun RestoreSummaryDialog(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         items(result.missingApps, key = { it.packageName }) { app ->
-                            MissingAppItem(app = app, context = context, store = preferredStore)
+                            MissingAppItem(
+                                app = app,
+                                context = context,
+                                store = preferredStore,
+                                onOpenStore = { openStoreWithErrorHandling(it) }
+                            )
                         }
                     }
                 }
@@ -174,7 +193,7 @@ fun RestoreSummaryDialog(
             if (result.missingApps.isNotEmpty()) {
                 TextButton(onClick = {
                     result.missingApps.forEach { app ->
-                        preferredStore.openApp(context, app.packageName)
+                        openStoreWithErrorHandling(app.packageName)
                     }
                     onDismiss()
                 }) {
@@ -191,7 +210,12 @@ fun RestoreSummaryDialog(
 }
 
 @Composable
-private fun MissingAppItem(app: RestoredApp, context: Context, store: AppStore) {
+private fun MissingAppItem(
+    app: RestoredApp,
+    context: Context,
+    store: AppStore,
+    onOpenStore: (String) -> Unit
+) {
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
@@ -223,7 +247,7 @@ private fun MissingAppItem(app: RestoredApp, context: Context, store: AppStore) 
                     )
                 }
             }
-            IconButton(onClick = { store.openApp(context, app.packageName) }) {
+            IconButton(onClick = { onOpenStore(app.packageName) }) {
                 Icon(
                     Icons.Default.GetApp,
                     contentDescription = stringResource(R.string.install_from_play_store),

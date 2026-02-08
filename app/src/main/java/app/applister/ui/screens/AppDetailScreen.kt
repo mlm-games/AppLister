@@ -29,11 +29,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -45,10 +48,12 @@ import app.applister.AppGraph
 import app.applister.R
 import app.applister.data.model.AppInfo
 import app.applister.data.model.AppStore
+import app.applister.data.model.StoreOpenResult
 import app.applister.data.repository.AppSettings
 import app.applister.ui.components.AppIcon
 import app.applister.ui.components.AppTopBar
 import app.applister.viewmodel.AppDetailViewModel
+import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -61,6 +66,8 @@ fun AppDetailScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     val settings by AppGraph.settings.flow.collectAsState(initial = AppSettings())
 
     val appInfo: AppInfo? = remember(packageName) {
@@ -111,7 +118,8 @@ fun AppDetailScreen(
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { pad ->
         if (appInfo == null) {
             Column(
@@ -242,7 +250,26 @@ fun AppDetailScreen(
                             FilledTonalButton(
                                 onClick = {
                                     val store = AppStore.fromIndex(settings.preferredStore)
-                                    vm.openAppStore(context, appInfo.packageName, store)
+                                    when (val result = vm.openAppStore(context, appInfo.packageName, store)) {
+                                        is StoreOpenResult.Success -> { /* No action needed */ }
+                                        is StoreOpenResult.NoAppFound -> {
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar(
+                                                    message = store.getMissingStoreMessage(),
+                                                    actionLabel = "Help"
+                                                ).let { response ->
+                                                    if (response == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                                                        snackbarHostState.showSnackbar(store.getGuidanceMessage())
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        is StoreOpenResult.Error -> {
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("Error: ${result.message}")
+                                            }
+                                        }
+                                    }
                                 },
                                 modifier = Modifier.weight(1f)
                             ) {
