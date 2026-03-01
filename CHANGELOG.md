@@ -1,3 +1,9 @@
+## v1.0.4
+
+- Bump actions/upload-artifact from 6 to 7 in /.github/workflows
+- Update README.md
+
+
 ## v1.0.3
 
 - Add splits logic
