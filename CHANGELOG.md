@@ -1,3 +1,12 @@
+## v1.0.5
+
+- Bump softprops/action-gh-release from 2 to 3 in /.github/workflows
+- Bump dependabot/fetch-metadata from 2 to 3 in /.github/workflows
+- Bump gradle/actions from 5 to 6 in /.github/workflows
+- Bump actions/upload-artifact from 6 to 7 in /.github/workflows
+- Update README.md
+
+
 ## v1.0.4
 
 - Bump actions/upload-artifact from 6 to 7 in /.github/workflows
