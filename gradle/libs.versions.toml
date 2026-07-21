@@ -17,7 +17,7 @@ kotlin = "2.4.10"
 kotlin-ksp = "2.3.10"
 material3Android = "1.4.0"
 animation = "1.10.2"
-navigation3Ui = "1.0.0"
+navigation3Ui = "1.1.4"
 coil = "3.3.0"
 apkDist = "0.5.2"
 
