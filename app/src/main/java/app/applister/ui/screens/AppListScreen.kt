@@ -136,6 +136,7 @@ fun AppListScreen(
 
     LaunchedEffect(snackbarState) {
         snackbarState?.let {
+            @Suppress("LocalContextGetResourceValueCall")
             val message = ctx.getString(it.messageResId, *it.args)
             snackbarHostState.showSnackbar(message)
             vm.dismissSnackbar()
