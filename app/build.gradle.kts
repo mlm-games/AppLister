@@ -11,12 +11,12 @@ kotlin {
 }
 
 android {
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "app.applister"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 160
         versionName = "1.0.6"
 
