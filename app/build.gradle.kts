@@ -17,7 +17,7 @@ android {
         applicationId = "app.applister"
         minSdk = 24
         targetSdk = 37
-        versionCode = 160
+        versionCode = 100161
         versionName = "1.0.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
