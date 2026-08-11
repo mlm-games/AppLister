@@ -13,6 +13,7 @@
 /build
 /captures
 /app/release
+/app/schemas
 .externalNativeBuild
 .cxx
 google-services.json
