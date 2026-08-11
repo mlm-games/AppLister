@@ -75,6 +75,7 @@ import app.applister.R
 import app.applister.data.model.AppInfo
 import app.applister.data.repository.AppSettings
 import app.applister.helper.ShareUtils
+import app.applister.helper.registerPackageChanges
 import app.applister.ui.components.AboutDialog
 import app.applister.ui.components.AppIcon
 import app.applister.ui.components.AppTopBar
