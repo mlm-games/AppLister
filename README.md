@@ -22,7 +22,7 @@ Will kinda be in an archive state, only being updated if the app is broken (or s
 
 ## Installation
 
-**Option 1:** Download the APK from [GitHub Releases](https://github.com/ymsr/AppLister/releases)
+**Option 1:** Download the APK from [GitHub Releases](https://github.com/mlm-games/AppLister/releases)
 
 [//]: # (**Option 2:** Install from IzzyOnDroid: https://apt.izzysoft.de/packages/app.applister)
 

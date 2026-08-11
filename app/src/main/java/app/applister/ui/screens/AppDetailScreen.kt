@@ -1,8 +1,5 @@
 package app.applister.ui.screens
 
-import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
-import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -54,7 +51,6 @@ import app.applister.ui.components.AppIcon
 import app.applister.ui.components.AppTopBar
 import app.applister.viewmodel.AppDetailViewModel
 import kotlinx.coroutines.launch
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -71,38 +67,7 @@ fun AppDetailScreen(
     val settings by AppGraph.settings.flow.collectAsState(initial = AppSettings())
 
     val appInfo: AppInfo? = remember(packageName) {
-        try {
-            val pm = context.packageManager
-            val pkg = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                pm.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
-            } else {
-                @Suppress("DEPRECATION")
-                pm.getPackageInfo(packageName, 0)
-            }
-            val ai = pkg.applicationInfo ?: return@remember null
-            val appName = ai.loadLabel(pm).toString()
-            val isSystem = (ai.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-            val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                pkg.longVersionCode
-            } else {
-                @Suppress("DEPRECATION")
-                pkg.versionCode.toLong()
-            }
-            val apkSize = try { File(ai.sourceDir).length() } catch (_: Exception) { 0L }
-
-            AppInfo(
-                packageName = pkg.packageName,
-                appName = appName,
-                versionName = pkg.versionName,
-                versionCode = versionCode,
-                isSystemApp = isSystem,
-                installTimeMillis = pkg.firstInstallTime,
-                updateTimeMillis = pkg.lastUpdateTime,
-                apkSizeBytes = apkSize
-            )
-        } catch (_: Exception) {
-            null
-        }
+        AppGraph.appListRepo.getAppInfo(packageName)
     }
 
     Scaffold(

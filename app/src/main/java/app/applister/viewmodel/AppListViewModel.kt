@@ -88,8 +88,7 @@ class AppListViewModel(
             val settings = settingsRepo.flow.first()
             _sortMode.value = SortMode.fromIndex(settings.defaultSort)
             _filterMode.value = FilterMode.entries.getOrElse(settings.defaultFilter) { FilterMode.ALL }
-            loadApps()
-
+            loadAppsInternal()
             if (settings.autoBackup) {
                 performAutoBackup(settings.autoBackupFormat)
             }
@@ -97,16 +96,18 @@ class AppListViewModel(
     }
 
     fun loadApps() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            try {
-                _allApps.value = appListRepo.getInstalledApps()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _snackbarState.value = SnackbarState(R.string.failed_load_apps, arrayOf(e.message ?: ""))
-            } finally {
-                _isLoading.value = false
-            }
+        viewModelScope.launch { loadAppsInternal() }
+    }
+
+    private suspend fun loadAppsInternal() {
+        _isLoading.value = true
+        try {
+            _allApps.value = appListRepo.getInstalledApps()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            _snackbarState.value = SnackbarState(R.string.failed_load_apps, arrayOf(e.message ?: ""))
+        } finally {
+            _isLoading.value = false
         }
     }
 
@@ -181,16 +182,14 @@ class AppListViewModel(
         }
     }
 
-    private fun performAutoBackup(format: Int) {
-        viewModelScope.launch {
-            try {
-                val allApps = _allApps.value
-                if (allApps.isNotEmpty()) {
-                    backupRepo.createBackup(allApps, format, isAuto = true)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
+    private suspend fun performAutoBackup(format: Int) {
+        try {
+            val allApps = _allApps.value
+            if (allApps.isNotEmpty()) {
+                backupRepo.createBackup(allApps, format, isAuto = true)
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 

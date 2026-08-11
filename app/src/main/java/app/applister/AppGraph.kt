@@ -27,7 +27,7 @@ object AppGraph {
 
         val db: AppDatabase = AppDatabase.build(appContext)
 
-        val appListRepo: AppListRepository = AppListRepository(appContext, db)
+        val appListRepo: AppListRepository = AppListRepository(appContext)
 
         val backupRepo: BackupRepository = BackupRepository(appContext, db, appListRepo)
     }

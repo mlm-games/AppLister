@@ -5,7 +5,6 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
-import app.applister.data.db.AppDatabase
 import app.applister.data.model.AppInfo
 import app.applister.data.model.FilterMode
 import app.applister.data.model.SortMode
@@ -14,8 +13,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 class AppListRepository(
-    private val context: Context,
-    private val db: AppDatabase
+    private val context: Context
 ) {
     suspend fun getInstalledApps(): List<AppInfo> = withContext(Dispatchers.IO) {
         val pm = context.packageManager
@@ -58,6 +56,21 @@ class AppListRepository(
                 updateTimeMillis = pkg.lastUpdateTime,
                 apkSizeBytes = apkSize
             )
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun getAppInfo(packageName: String): AppInfo? {
+        return try {
+            val pm = context.packageManager
+            val pkg = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getPackageInfo(packageName, 0)
+            }
+            packageToAppInfo(pm, pkg)
         } catch (_: Exception) {
             null
         }

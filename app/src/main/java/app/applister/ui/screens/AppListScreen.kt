@@ -55,6 +55,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -140,6 +141,13 @@ fun AppListScreen(
             val message = ctx.getString(it.messageResId, *it.args)
             snackbarHostState.showSnackbar(message)
             vm.dismissSnackbar()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        val receiver = ctx.registerPackageChanges { vm.loadApps() }
+        onDispose {
+            try { ctx.unregisterReceiver(receiver) } catch (_: Exception) {}
         }
     }
 

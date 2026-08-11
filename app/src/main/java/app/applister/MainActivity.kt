@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,6 +42,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         AppGraph.init(applicationContext)
 
         setContent {
@@ -51,7 +53,11 @@ class MainActivity : ComponentActivity() {
                 else -> true
             }
 
-            MainTheme(darkTheme = dark, useAuroraTheme = settings.useAuroraTheme) {
+            MainTheme(
+                darkTheme = dark,
+                useAuroraTheme = settings.useAuroraTheme,
+                dynamicColor = !settings.useAuroraTheme
+            ) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     val backStack = rememberNavBackStack(Screen.Home)
                     BackHandler(enabled = backStack.size > 1) {

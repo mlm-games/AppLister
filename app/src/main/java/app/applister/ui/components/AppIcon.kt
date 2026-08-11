@@ -1,9 +1,5 @@
 package app.applister.ui.components
 
-import android.content.pm.PackageManager
-import android.graphics.drawable.Drawable
-import android.os.Build
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -14,11 +10,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.drawable.toBitmap
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 
 @Composable
 fun AppIcon(
@@ -27,39 +24,36 @@ fun AppIcon(
     size: Dp = 44.dp
 ) {
     val context = LocalContext.current
-    val drawable: Drawable? = remember(packageName) {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                context.packageManager.getApplicationIcon(packageName)
-            } else {
-                @Suppress("DEPRECATION")
-                context.packageManager.getApplicationIcon(packageName)
-            }
-        } catch (_: PackageManager.NameNotFoundException) {
-            null
-        }
+    val model = remember(packageName) {
+        ImageRequest.Builder(context)
+            .data(PackageIcon(packageName))
+            .crossfade(true)
+            .build()
     }
 
-    if (drawable != null) {
-        val bitmap = remember(drawable) {
-            drawable.toBitmap(
-                width = (size.value * 2).toInt(),
-                height = (size.value * 2).toInt()
-            ).asImageBitmap()
+    AsyncImage(
+        model = model,
+        contentDescription = null,
+        modifier = modifier
+            .size(size)
+            .clip(RoundedCornerShape(8.dp)),
+        error = {
+            Icon(
+                imageVector = Icons.Default.Android,
+                contentDescription = null,
+                modifier = Modifier.size(size),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        placeholder = {
+            Icon(
+                imageVector = Icons.Default.Android,
+                contentDescription = null,
+                modifier = Modifier.size(size),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
-        Image(
-            bitmap = bitmap,
-            contentDescription = null,
-            modifier = modifier
-                .size(size)
-                .clip(RoundedCornerShape(8.dp))
-        )
-    } else {
-        Icon(
-            imageVector = Icons.Default.Android,
-            contentDescription = null,
-            modifier = modifier.size(size),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
+    )
 }
+
+data class PackageIcon(val packageName: String)

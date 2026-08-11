@@ -10,6 +10,10 @@ kotlin {
     jvmToolchain(21)
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 android {
     compileSdk = 37
 
@@ -120,7 +124,6 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.material3.android)
     implementation(libs.activity.compose)
-    implementation(libs.navigation.compose)
 
     implementation(libs.kmp.settings.core)
     implementation(libs.kmp.settings.ui.compose)

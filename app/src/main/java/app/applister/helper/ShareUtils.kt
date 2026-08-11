@@ -9,6 +9,7 @@ object ShareUtils {
 
     fun shareTextFile(context: Context, fileName: String, content: String, mimeType: String = "text/plain") {
         val file = File(context.cacheDir, fileName)
+        file.parentFile?.mkdirs()
         file.writeText(content)
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         val intent = Intent(Intent.ACTION_SEND).apply {

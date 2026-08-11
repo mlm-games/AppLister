@@ -1,7 +1,6 @@
 package app.applister.data.repository
 
 import io.github.mlmgames.settings.core.annotations.CategoryDefinition
-import io.github.mlmgames.settings.core.annotations.Persisted
 import io.github.mlmgames.settings.core.annotations.Setting
 import io.github.mlmgames.settings.core.types.Dropdown
 import io.github.mlmgames.settings.core.types.Toggle
@@ -68,7 +67,12 @@ data class AppSettings(
     )
     val themeMode: Int = 0,
 
-    @Persisted
+    @Setting(
+        title = "Aurora theme",
+        description = "Use custom Aurora color scheme instead of system dynamic colors",
+        category = Appearance::class,
+        type = Toggle::class
+    )
     val useAuroraTheme: Boolean = true,
 
     @Setting(

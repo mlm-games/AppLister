@@ -120,8 +120,9 @@ fun BackupListScreen(
                         onRestore = {
                             scope.launch {
                                 val content = vm.readBackupContent(record)
-                                if (content != null && record.format == "JSON") {
+                                if (content != null && record.format.equals("JSON", ignoreCase = true)) {
                                     appListVM.restoreFromJson(content)
+                                    onBack()
                                 }
                             }
                         },
@@ -211,7 +212,7 @@ private fun BackupItem(
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
-                if (record.format == "JSON") {
+                if (record.format.equals("JSON", ignoreCase = true)) {
                     IconButton(onClick = onRestore) {
                         Icon(
                             Icons.Default.RestorePage,

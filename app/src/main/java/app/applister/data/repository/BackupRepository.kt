@@ -136,7 +136,7 @@ class BackupRepository(
         sb.appendLine("| # | App Name | Package Name | Version | Installed | Size |")
         sb.appendLine("|---|----------|--------------|---------|-----------|------|")
         apps.forEachIndexed { index, app ->
-            sb.appendLine("| ${index + 1} | ${app.appName} | ${app.packageName} | ${app.versionName ?: "-"} | ${app.installDateFormatted} | ${app.apkSizeFormatted} |")
+            sb.appendLine("| ${index + 1} | ${escapeMdCell(app.appName)} | ${escapeMdCell(app.packageName)} | ${escapeMdCell(app.versionName ?: "-")} | ${app.installDateFormatted} | ${app.apkSizeFormatted} |")
         }
         return sb.toString()
     }
@@ -197,10 +197,26 @@ class BackupRepository(
         sb.appendLine("<table>")
         sb.appendLine("<tr><th>#</th><th>App Name</th><th>Package</th><th>Version</th><th>Installed</th><th>Size</th></tr>")
         apps.forEachIndexed { index, app ->
-            sb.appendLine("<tr><td>${index + 1}</td><td>${app.appName}</td><td><code>${app.packageName}</code></td><td>${app.versionName ?: "-"}</td><td>${app.installDateFormatted}</td><td>${app.apkSizeFormatted}</td></tr>")
+            sb.appendLine("<tr><td>${index + 1}</td><td>${escapeHtml(app.appName)}</td><td><code>${escapeHtml(app.packageName)}</code></td><td>${escapeHtml(app.versionName ?: "-")}</td><td>${app.installDateFormatted}</td><td>${app.apkSizeFormatted}</td></tr>")
         }
         sb.appendLine("</table></body></html>")
         return sb.toString()
+    }
+
+    private fun escapeMdCell(s: String): String =
+        s.replace("|", "\\|").replace("\n", " ").replace("\r", "")
+
+    private fun escapeHtml(s: String): String = buildString(s.length) {
+        for (c in s) {
+            when (c) {
+                '<' -> append("&lt;")
+                '>' -> append("&gt;")
+                '&' -> append("&amp;")
+                '"' -> append("&quot;")
+                '\'' -> append("&#39;")
+                else -> append(c)
+            }
+        }
     }
 
     private fun formatExtension(format: Int): String = when (format) {
