@@ -1,8 +1,7 @@
 package app.applister.data.model
 
-import kotlinx.serialization.Serializable
+import java.util.Locale
 
-@Serializable
 data class AppInfo(
     val packageName: String,
     val appName: String,
@@ -31,10 +30,10 @@ data class AppInfo(
 
         private fun formatSize(bytes: Long): String {
             if (bytes <= 0) return "0 B"
-            val units = arrayOf("B", "KB", "MB", "GB")
+            val units = arrayOf("B", "KB", "MB", "GB", "TB")
             val digitGroups = (Math.log10(bytes.toDouble()) / Math.log10(1024.0)).toInt()
             val idx = digitGroups.coerceIn(0, units.lastIndex)
-            return "%.1f %s".format(bytes / Math.pow(1024.0, idx.toDouble()), units[idx])
+            return "%.1f %s".format(Locale.ROOT, bytes / Math.pow(1024.0, idx.toDouble()), units[idx])
         }
     }
 }

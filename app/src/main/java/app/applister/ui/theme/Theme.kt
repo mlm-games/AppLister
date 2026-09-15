@@ -22,17 +22,17 @@ fun MainTheme(
 ) {
     val context = LocalContext.current
     val colorScheme = when {
-        useAuroraTheme -> if (darkTheme) AurDarkTheme else AurLightTheme
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        darkTheme -> AurDarkTheme
-        else -> AurLightTheme
+        useAuroraTheme || Build.VERSION.SDK_INT < Build.VERSION_CODES.S ->
+            if (darkTheme) AurDarkTheme else AurLightTheme
+        else -> if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     }
 
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
+            val window = (view.context as? Activity)?.window ?: return@SideEffect
             val controller = WindowCompat.getInsetsController(window, view)
             controller.isAppearanceLightStatusBars = !darkTheme
             controller.isAppearanceLightNavigationBars = !darkTheme

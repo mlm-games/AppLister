@@ -50,6 +50,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -57,11 +58,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,11 +71,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.applister.AppGraph
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.applister.R
 import app.applister.data.model.AppInfo
-import app.applister.data.repository.AppSettings
 import app.applister.helper.ShareUtils
+import app.applister.helper.ShareResult
 import app.applister.helper.registerPackageChanges
 import app.applister.ui.components.AboutDialog
 import app.applister.ui.components.AppIcon
@@ -85,28 +86,32 @@ import app.applister.ui.components.RestoreSummaryDialog
 import app.applister.ui.components.SearchBar
 import app.applister.ui.components.SortDialog
 import app.applister.viewmodel.AppListViewModel
+import app.applister.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppListScreen(
     vm: AppListViewModel,
+    settingsVM: SettingsViewModel,
     onOpenSettings: () -> Unit,
     onOpenBackups: () -> Unit,
     onOpenApp: (String) -> Unit
 ) {
-    val apps by vm.apps.collectAsState()
-    val isLoading by vm.isLoading.collectAsState()
-    val query by vm.query.collectAsState()
-    val sortMode by vm.sortMode.collectAsState()
-    val filterMode by vm.filterMode.collectAsState()
-    val appCounts by vm.appCounts.collectAsState()
-    val selectionMode by vm.selectionMode.collectAsState()
-    val selectedPackages by vm.selectedPackages.collectAsState()
-    val snackbarState by vm.snackbarState.collectAsState()
-    val restoreResult by vm.restoreResult.collectAsState()
-    val backupInProgress by vm.backupInProgress.collectAsState()
-    val settings by AppGraph.settings.flow.collectAsState(initial = AppSettings())
+    val apps by vm.apps.collectAsStateWithLifecycle()
+    val isLoading by vm.isLoading.collectAsStateWithLifecycle()
+    val loadError by vm.loadError.collectAsStateWithLifecycle()
+    val query by vm.query.collectAsStateWithLifecycle()
+    val sortMode by vm.sortMode.collectAsStateWithLifecycle()
+    val filterMode by vm.filterMode.collectAsStateWithLifecycle()
+    val appCounts by vm.appCounts.collectAsStateWithLifecycle()
+    val selectionMode by vm.selectionMode.collectAsStateWithLifecycle()
+    val selectedPackages by vm.selectedPackages.collectAsStateWithLifecycle()
+    val restoreResult by vm.restoreResult.collectAsStateWithLifecycle()
+    val backupInProgress by vm.backupInProgress.collectAsStateWithLifecycle()
+    val restoreInProgress by vm.restoreInProgress.collectAsStateWithLifecycle()
+    val exportInProgress by vm.exportInProgress.collectAsStateWithLifecycle()
+    val settings by settingsVM.settings.collectAsStateWithLifecycle()
 
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -114,9 +119,9 @@ fun AppListScreen(
     val listState = rememberLazyListState()
 
     var showMenu by remember { mutableStateOf(false) }
-    var showSortDialog by remember { mutableStateOf(false) }
-    var showExportDialog by remember { mutableStateOf(false) }
-    var showAboutDialog by remember { mutableStateOf(false) }
+    var showSortDialog by rememberSaveable { mutableStateOf(false) }
+    var showExportDialog by rememberSaveable { mutableStateOf(false) }
+    var showAboutDialog by rememberSaveable { mutableStateOf(false) }
 
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -128,24 +133,30 @@ fun AppListScreen(
                         ?.bufferedReader()?.use { it.readText() }
                     if (!json.isNullOrBlank()) {
                         vm.restoreFromJson(json)
+                    } else {
+                        snackbarHostState.showSnackbar(ctx.getString(R.string.restore_failed, "empty file"))
                     }
                 } catch (t: Throwable) {
                     t.printStackTrace()
+                    try {
+                        snackbarHostState.showSnackbar(ctx.getString(R.string.restore_failed, t.message ?: ""))
+                    } catch (_: Exception) { }
                 }
             }
         }
     }
 
-    LaunchedEffect(snackbarState) {
-        snackbarState?.let {
+    LaunchedEffect(vm) {
+        vm.snackbarEvents.collect { event ->
             @Suppress("LocalContextGetResourceValueCall")
-            val message = ctx.getString(it.messageResId, *it.args)
-            snackbarHostState.showSnackbar(message)
-            vm.dismissSnackbar()
+            val message = ctx.getString(event.messageResId, *event.args)
+            try {
+                snackbarHostState.showSnackbar(message)
+            } catch (_: Exception) { }
         }
     }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(ctx) {
         val receiver = ctx.registerPackageChanges { vm.loadApps() }
         onDispose {
             try { ctx.unregisterReceiver(receiver) } catch (_: Exception) {}
@@ -157,7 +168,7 @@ fun AppListScreen(
             if (selectionMode) {
                 AppTopBar(
                     title = {
-                        Text("${selectedPackages.size} selected")
+                        Text(stringResource(R.string.selected_count, selectedPackages.size))
                     },
                     navigationIcon = {
                         IconButton(onClick = { vm.exitSelectionMode() }) {
@@ -180,16 +191,19 @@ fun AppListScreen(
                 AppTopBar(
                     title = { Text(stringResource(R.string.app_name)) },
                     actions = {
-                        IconButton(onClick = { showSortDialog = true }) {
-                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.sort))
+                        Box {
+                            IconButton(onClick = { showSortDialog = true }) {
+                                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.sort))
+                            }
                         }
-                        IconButton(onClick = { showMenu = !showMenu }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.menu))
-                        }
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
-                        ) {
+                        Box {
+                            IconButton(onClick = { showMenu = !showMenu }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.menu))
+                            }
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false }
+                            ) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.select_apps)) },
                                 leadingIcon = { Icon(Icons.Default.Checklist, contentDescription = null) },
@@ -248,6 +262,7 @@ fun AppListScreen(
                                     showAboutDialog = true
                                 }
                             )
+                            }
                         }
                     }
                 )
@@ -255,20 +270,22 @@ fun AppListScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            AnimatedVisibility(
-                visible = !selectionMode,
-                enter = fadeIn() + slideInVertically { it },
-                exit = fadeOut() + slideOutVertically { it }
-            ) {
-                FloatingActionButton(
-                    onClick = { vm.loadApps() },
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+            if (!selectionMode) {
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn() + slideInVertically { it },
+                    exit = fadeOut() + slideOutVertically { it }
                 ) {
-                    Icon(
-                        Icons.Default.Refresh,
-                        contentDescription = stringResource(R.string.refresh),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                    FloatingActionButton(
+                        onClick = { vm.loadApps() },
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = stringResource(R.string.refresh),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                 }
             }
         }
@@ -301,7 +318,7 @@ fun AppListScreen(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (backupInProgress) {
+                if (backupInProgress || restoreInProgress || exportInProgress) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -313,7 +330,11 @@ fun AppListScreen(
                             strokeWidth = 2.dp
                         )
                         Text(
-                            text = stringResource(R.string.backing_up),
+                            text = when {
+                                restoreInProgress -> stringResource(R.string.restoring)
+                                exportInProgress -> stringResource(R.string.export_list)
+                                else -> stringResource(R.string.backing_up)
+                            },
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -336,16 +357,48 @@ fun AppListScreen(
                         )
                     }
                 }
+            } else if (loadError != null && apps.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            stringResource(R.string.load_failed),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            loadError ?: "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedButton(onClick = { vm.retryLoad() }) {
+                            Text(stringResource(R.string.retry))
+                        }
+                    }
+                }
             } else if (apps.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        stringResource(R.string.no_apps_found),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            if (query.isBlank()) stringResource(R.string.no_apps_found)
+                            else stringResource(R.string.no_results_for_query, query),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (query.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(onClick = { vm.setQuery("") }) {
+                                Text(stringResource(R.string.clear_search))
+                            }
+                        }
+                    }
                 }
             } else {
                 LazyColumn(
@@ -394,16 +447,30 @@ fun AppListScreen(
         ExportFormatDialog(
             defaultFormat = settings.defaultExportFormat,
             onFormatSelected = { format ->
-                showExportDialog = false
-                val content = vm.getExportContent(format)
-                val ext = ShareUtils.getExtension(format)
-                val mime = ShareUtils.getMimeType(format)
-                ShareUtils.shareTextFile(
-                    ctx,
-                    "applister.$ext",
-                    content,
-                    mime
-                )
+                scope.launch {
+                    try {
+                        val content = vm.getExportContent(format)
+                        val ext = ShareUtils.getExtension(format)
+                        val mime = ShareUtils.getMimeType(format)
+                        when (val r = ShareUtils.shareTextFile(ctx, "applister.$ext", content, mime)) {
+                            is ShareResult.Shared -> vm.exitSelectionMode()
+                            is ShareResult.Failed -> snackbarHostState.showSnackbar(
+                                ctx.getString(R.string.share_failed, r.reason)
+                            )
+                        }
+                    } catch (e: IllegalStateException) {
+                        try {
+                            snackbarHostState.showSnackbar(ctx.getString(R.string.no_apps_to_export))
+                        } catch (_: Exception) { }
+                    } catch (t: Throwable) {
+                        t.printStackTrace()
+                        try {
+                            snackbarHostState.showSnackbar(
+                                ctx.getString(R.string.export_failed, t.message ?: "")
+                            )
+                        } catch (_: Exception) { }
+                    }
+                }
             },
             onDismiss = { showExportDialog = false }
         )
@@ -417,10 +484,13 @@ fun AppListScreen(
     if (currentResult != null) {
         RestoreSummaryDialog(
             result = currentResult,
+            settingsVM = settingsVM,
             onDismiss = { vm.dismissRestoreResult() },
             onStoreError = { message ->
                 scope.launch {
-                    snackbarHostState.showSnackbar(message)
+                    try {
+                        snackbarHostState.showSnackbar(message)
+                    } catch (_: Exception) { }
                 }
             }
         )

@@ -1,23 +1,34 @@
 package app.applister.data.repository
 
 import android.content.Context
+import android.database.sqlite.SQLiteConstraintException
+import android.os.Build
 import app.applister.data.Constants
 import app.applister.data.db.AppDatabase
 import app.applister.data.db.BackupRecord
 import app.applister.data.model.AppInfo
 import app.applister.data.model.BackupAppEntry
 import app.applister.data.model.BackupBundle
+import app.applister.data.model.RestoreError
 import app.applister.data.model.RestoreResult
 import app.applister.data.model.RestoredApp
+import app.applister.data.model.VersionStatus
+import app.applister.data.model.deduplicated
+import app.applister.data.model.isValidPackageName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 
 class BackupRepository(
     private val context: Context,
@@ -26,8 +37,11 @@ class BackupRepository(
 ) {
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
 
-    private fun backupDir(): File {
-        val dir = File(context.getExternalFilesDir(null), Constants.BACKUP_DIR)
+    private val backupMutex = Mutex()
+
+        private fun backupDir(): File {
+        val base = context.getExternalFilesDir(null) ?: context.filesDir
+        val dir = File(base, Constants.BACKUP_DIR)
         if (!dir.exists()) dir.mkdirs()
         return dir
     }
@@ -36,86 +50,152 @@ class BackupRepository(
 
     suspend fun createBackup(
         apps: List<AppInfo>,
-        format: Int = Constants.ExportFormat.MARKDOWN,
+        format: Int = Constants.ExportFormat.JSON,
         isAuto: Boolean = false
     ): BackupRecord? = withContext(Dispatchers.IO) {
-        try {
-            val timestamp = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.getDefault())
-                .format(Date())
-            val extension = formatExtension(format)
-            val prefix = if (isAuto) "${Constants.BACKUP_PREFIX}-auto" else Constants.BACKUP_PREFIX
-            val fileName = "${prefix}_${timestamp}.${extension}"
+        backupMutex.withLock {
+            try {
+                val safeFormat = Constants.ExportFormat.coerce(format)
+                val extension = Constants.ExportFormat.extension(safeFormat)
+                val prefix = if (isAuto) "${Constants.BACKUP_PREFIX}-auto" else Constants.BACKUP_PREFIX
+                val timestamp = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS", Locale.US).format(Date())
+                val fileName = "${prefix}_${timestamp}_${UUID.randomUUID().toString().take(8)}.$extension"
 
-            val content = formatApps(apps, format)
-            val file = File(backupDir(), fileName)
-            file.writeText(content)
+                val content = formatApps(apps, safeFormat)
+                val file = File(backupDir(), fileName)
+                file.parentFile?.mkdirs()
+                file.writeText(content)
 
-            if (isAuto) {
-                cleanupOldAutoBackups()
+                if (isAuto) {
+                    pruneAutoBackupsLocked(pendingInsert = 1)
+                }
+
+                val record = BackupRecord(
+                    fileName = fileName,
+                    filePath = file.absolutePath,
+                    appCount = apps.size,
+                    format = Constants.ExportFormat.displayName(safeFormat),
+                    isAutoBackup = isAuto
+                )
+                val id = try {
+                    db.backupDao().insert(record)
+                } catch (e: SQLiteConstraintException) {
+                    file.delete()
+                    throw e
+                } catch (e: Exception) {
+                    file.delete()
+                    throw e
+                }
+                record.copy(id = id)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
             }
+        }
+    }
 
-            val record = BackupRecord(
-                fileName = fileName,
-                filePath = file.absolutePath,
-                appCount = apps.size,
-                format = formatName(format),
-                isAutoBackup = isAuto
-            )
-            val id = db.backupDao().insert(record)
-            record.copy(id = id)
+    private suspend fun pruneAutoBackupsLocked(pendingInsert: Int = 0) {
+        val autoBackups = db.backupDao().autoBackups()
+        val overBy = autoBackups.size + pendingInsert - Constants.MAX_AUTO_BACKUPS
+        if (overBy <= 0) return
+        val toDelete = autoBackups.takeLast(overBy.coerceAtMost(autoBackups.size))
+        if (toDelete.isEmpty()) return
+        val deletedIds = mutableListOf<Long>()
+        toDelete.forEach { record ->
+            val fileDeleted = try {
+                val f = File(record.filePath)
+                !f.exists() || f.delete()
+            } catch (_: Exception) {
+                false
+            }
+            if (fileDeleted) deletedIds.add(record.id)
+        }
+        if (deletedIds.isNotEmpty()) {
+            db.backupDao().deleteByIds(deletedIds)
+        }
+    }
+
+    suspend fun deleteBackup(record: BackupRecord): DeleteBackupResult = withContext(Dispatchers.IO) {
+        val fileDeleted = try {
+            val f = File(record.filePath)
+            !f.exists() || f.delete()
+        } catch (_: Exception) {
+            false
+        }
+        return@withContext try {
+            if (fileDeleted) {
+                db.backupDao().delete(record)
+                DeleteBackupResult.Deleted
+            } else {
+                DeleteBackupResult.FileDeleteFailed
+            }
         } catch (e: Exception) {
             e.printStackTrace()
-            null
+            DeleteBackupResult.DatabaseError
         }
-    }
-
-    private suspend fun cleanupOldAutoBackups() {
-        val autoBackups = db.backupDao().autoBackups()
-        if (autoBackups.size > Constants.MAX_AUTO_BACKUPS) {
-            val toDelete = autoBackups.drop(Constants.MAX_AUTO_BACKUPS)
-            toDelete.forEach { record ->
-                try {
-                    File(record.filePath).delete()
-                } catch (_: Exception) { }
-            }
-            db.backupDao().deleteByIds(toDelete.map { it.id })
-        }
-    }
-
-    suspend fun deleteBackup(record: BackupRecord) = withContext(Dispatchers.IO) {
-        try {
-            File(record.filePath).delete()
-        } catch (_: Exception) { }
-        db.backupDao().delete(record)
     }
 
     suspend fun restoreFromJson(jsonContent: String): RestoreResult = withContext(Dispatchers.IO) {
-        val bundle = json.decodeFromString<BackupBundle>(jsonContent)
+        val bundle = try {
+            json.decodeFromString<BackupBundle>(jsonContent)
+        } catch (e: SerializationException) {
+            return@withContext RestoreResult(
+                totalApps = 0,
+                foundApps = emptyList(),
+                missingApps = emptyList(),
+                error = RestoreError.MALFORMED_JSON
+            )
+        } catch (e: IllegalArgumentException) {
+            return@withContext RestoreResult(
+                totalApps = 0,
+                foundApps = emptyList(),
+                missingApps = emptyList(),
+                error = RestoreError.MALFORMED_JSON
+            )
+        }
+
         val found = mutableListOf<RestoredApp>()
         val missing = mutableListOf<RestoredApp>()
+        var skippedInvalid = 0
 
-        bundle.apps.forEach { entry ->
+        bundle.apps.deduplicated().forEach { entry ->
+            if (!entry.packageName.isValidPackageName()) {
+                skippedInvalid++
+                return@forEach
+            }
+            val installed = appListRepo.isPackageInstalled(entry.packageName)
+            val installedInfo = if (installed) appListRepo.getAppInfo(entry.packageName) else null
+            val status = when {
+                !installed -> VersionStatus.MISSING
+                installedInfo == null -> VersionStatus.INSTALLED
+                entry.versionCode > 0 && installedInfo.versionCode != entry.versionCode -> {
+                    if (installedInfo.versionCode < entry.versionCode) VersionStatus.OUTDATED
+                    else VersionStatus.NEWER_THAN_BACKUP
+                }
+                entry.versionName != null && installedInfo.versionName != entry.versionName ->
+                    VersionStatus.VERSION_DIFFERS
+                else -> VersionStatus.INSTALLED
+            }
             val restoredApp = RestoredApp(
                 packageName = entry.packageName,
                 appName = entry.appName,
-                versionInBackup = entry.versionName
+                versionInBackup = entry.versionName,
+                versionStatus = status
             )
-            if (appListRepo.isPackageInstalled(entry.packageName)) {
-                found.add(restoredApp)
-            } else {
-                missing.add(restoredApp)
-            }
+            if (installed) found.add(restoredApp) else missing.add(restoredApp)
         }
 
         RestoreResult(
-            totalApps = bundle.apps.size,
+            totalApps = found.size + missing.size,
             foundApps = found,
-            missingApps = missing
+            missingApps = missing,
+            error = null,
+            skippedInvalidEntries = skippedInvalid
         )
     }
 
     fun formatApps(apps: List<AppInfo>, format: Int): String {
-        return when (format) {
+        return when (Constants.ExportFormat.coerce(format)) {
             Constants.ExportFormat.MARKDOWN -> formatMarkdown(apps)
             Constants.ExportFormat.PLAIN_TEXT -> formatPlainText(apps)
             Constants.ExportFormat.JSON -> formatJson(apps)
@@ -128,15 +208,19 @@ class BackupRepository(
         val sb = StringBuilder()
         sb.appendLine("# My App List")
         sb.appendLine()
-        sb.appendLine("Generated: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}")
-        sb.appendLine("Device: ${android.os.Build.MODEL}")
-        sb.appendLine("Android: ${android.os.Build.VERSION.RELEASE}")
+        sb.appendLine("Generated: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())}")
+        sb.appendLine("Device: ${escapeMdCell(Build.MODEL ?: "unknown")}")
+        sb.appendLine("Android: ${escapeMdCell(Build.VERSION.RELEASE ?: "unknown")}")
         sb.appendLine("Total apps: ${apps.size}")
         sb.appendLine()
         sb.appendLine("| # | App Name | Package Name | Version | Installed | Size |")
         sb.appendLine("|---|----------|--------------|---------|-----------|------|")
         apps.forEachIndexed { index, app ->
-            sb.appendLine("| ${index + 1} | ${escapeMdCell(app.appName)} | ${escapeMdCell(app.packageName)} | ${escapeMdCell(app.versionName ?: "-")} | ${app.installDateFormatted} | ${app.apkSizeFormatted} |")
+            sb.appendLine(
+                "| ${index + 1} | ${escapeMdCell(app.appName)} | " +
+                    "${escapeMdCell(app.packageName)} | ${escapeMdCell(app.versionName ?: "-")} | " +
+                    "${escapeMdCell(app.installDateFormatted)} | ${escapeMdCell(app.apkSizeFormatted)} |"
+            )
         }
         return sb.toString()
     }
@@ -144,16 +228,16 @@ class BackupRepository(
     private fun formatPlainText(apps: List<AppInfo>): String {
         val sb = StringBuilder()
         sb.appendLine("My App List")
-        sb.appendLine("Generated: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}")
-        sb.appendLine("Device: ${android.os.Build.MODEL}")
+        sb.appendLine("Generated: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())}")
+        sb.appendLine("Device: ${oneLine(Build.MODEL ?: "unknown")}")
         sb.appendLine("Total apps: ${apps.size}")
         sb.appendLine("─".repeat(60))
         apps.forEachIndexed { index, app ->
-            sb.appendLine("${index + 1}. ${app.appName}")
-            sb.appendLine("   Package: ${app.packageName}")
-            sb.appendLine("   Version: ${app.versionName ?: "-"}")
-            sb.appendLine("   Installed: ${app.installDateFormatted}")
-            sb.appendLine("   Size: ${app.apkSizeFormatted}")
+            sb.appendLine("${index + 1}. ${oneLine(app.appName)}")
+            sb.appendLine("   Package: ${oneLine(app.packageName)}")
+            sb.appendLine("   Version: ${oneLine(app.versionName ?: "-")}")
+            sb.appendLine("   Installed: ${oneLine(app.installDateFormatted)}")
+            sb.appendLine("   Size: ${oneLine(app.apkSizeFormatted)}")
             sb.appendLine()
         }
         return sb.toString()
@@ -161,6 +245,10 @@ class BackupRepository(
 
     private fun formatJson(apps: List<AppInfo>): String {
         val bundle = BackupBundle(
+            schemaVersion = Constants.BACKUP_SCHEMA_VERSION,
+            createdAt = System.currentTimeMillis(),
+            deviceName = Build.MODEL ?: "unknown",
+            androidVersion = Build.VERSION.RELEASE ?: "unknown",
             apps = apps.map { app ->
                 BackupAppEntry(
                     packageName = app.packageName,
@@ -190,21 +278,29 @@ class BackupRepository(
         sb.appendLine("</style></head><body>")
         sb.appendLine("<h1>My App List</h1>")
         sb.appendLine("<div class=\"meta\">")
-        sb.appendLine("<p>Generated: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}</p>")
-        sb.appendLine("<p>Device: ${android.os.Build.MODEL} · Android ${android.os.Build.VERSION.RELEASE}</p>")
+        sb.appendLine("<p>Generated: ${escapeHtml(SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date()))}</p>")
+        sb.appendLine("<p>Device: ${escapeHtml(Build.MODEL ?: "unknown")} · Android ${escapeHtml(Build.VERSION.RELEASE ?: "unknown")}</p>")
         sb.appendLine("<p>Total apps: ${apps.size}</p>")
         sb.appendLine("</div>")
         sb.appendLine("<table>")
         sb.appendLine("<tr><th>#</th><th>App Name</th><th>Package</th><th>Version</th><th>Installed</th><th>Size</th></tr>")
         apps.forEachIndexed { index, app ->
-            sb.appendLine("<tr><td>${index + 1}</td><td>${escapeHtml(app.appName)}</td><td><code>${escapeHtml(app.packageName)}</code></td><td>${escapeHtml(app.versionName ?: "-")}</td><td>${app.installDateFormatted}</td><td>${app.apkSizeFormatted}</td></tr>")
+            sb.appendLine(
+                "<tr><td>${index + 1}</td><td>${escapeHtml(app.appName)}</td>" +
+                    "<td><code>${escapeHtml(app.packageName)}</code></td>" +
+                    "<td>${escapeHtml(app.versionName ?: "-")}</td>" +
+                    "<td>${escapeHtml(app.installDateFormatted)}</td>" +
+                    "<td>${escapeHtml(app.apkSizeFormatted)}</td></tr>"
+            )
         }
         sb.appendLine("</table></body></html>")
         return sb.toString()
     }
 
     private fun escapeMdCell(s: String): String =
-        s.replace("|", "\\|").replace("\n", " ").replace("\r", "")
+        s.replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ").replace("\r", "")
+
+    private fun oneLine(s: String): String = s.replace("\n", " ").replace("\r", "")
 
     private fun escapeHtml(s: String): String = buildString(s.length) {
         for (c in s) {
@@ -219,21 +315,34 @@ class BackupRepository(
         }
     }
 
-    private fun formatExtension(format: Int): String = when (format) {
-        Constants.ExportFormat.MARKDOWN -> "md"
-        Constants.ExportFormat.PLAIN_TEXT -> "txt"
-        Constants.ExportFormat.JSON -> "json"
-        Constants.ExportFormat.HTML -> "html"
-        else -> "md"
-    }
-
-    private fun formatName(format: Int): String = when (format) {
-        Constants.ExportFormat.MARKDOWN -> "Markdown"
-        Constants.ExportFormat.PLAIN_TEXT -> "Plain Text"
-        Constants.ExportFormat.JSON -> "JSON"
-        Constants.ExportFormat.HTML -> "HTML"
-        else -> "Markdown"
-    }
-
     fun getBackupFile(record: BackupRecord): File = File(record.filePath)
+
+    fun isFileMissing(record: BackupRecord): Boolean = !File(record.filePath).exists()
+
+        suspend fun readBackupContent(record: BackupRecord): String = withContext(Dispatchers.IO) {
+        val file = File(record.filePath)
+        if (!file.exists()) throw IOException("Backup file not found: ${record.fileName}")
+        if (!file.isFile || !file.canRead()) throw IOException("Backup file unreadable: ${record.fileName}")
+        if (file.length() == 0L) throw IOException("Backup file is empty: ${record.fileName}")
+        file.readText()
+    }
+
+    suspend fun allBackupRecords(): List<BackupRecord> = withContext(Dispatchers.IO) {
+        db.backupDao().snapshot()
+    }
+
+    suspend fun deleteStaleRecords(records: List<BackupRecord>): Int = withContext(Dispatchers.IO) {
+        backupMutex.withLock {
+            val stale = records.filter { !File(it.filePath).exists() }
+            if (stale.isEmpty()) return@withLock 0
+            db.backupDao().deleteByIds(stale.map { it.id })
+            stale.size
+        }
+    }
+}
+
+enum class DeleteBackupResult {
+    Deleted,
+    FileDeleteFailed,
+    DatabaseError
 }

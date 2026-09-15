@@ -26,11 +26,12 @@ import app.applister.data.Constants
 @Composable
 fun ExportFormatDialog(
     title: String = stringResource(R.string.export_format),
-    defaultFormat: Int = Constants.ExportFormat.MARKDOWN,
+    defaultFormat: Int = Constants.ExportFormat.JSON,
     onFormatSelected: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var selectedFormat by remember { mutableIntStateOf(defaultFormat) }
+    val safeDefault = Constants.ExportFormat.coerce(defaultFormat)
+    var selectedFormat by remember(safeDefault) { mutableIntStateOf(safeDefault) }
 
     val formats = listOf(
         Constants.ExportFormat.MARKDOWN to stringResource(R.string.markdown_md),
@@ -69,7 +70,11 @@ fun ExportFormatDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onFormatSelected(selectedFormat) }) {
+            TextButton(onClick = {
+                val chosen = selectedFormat
+                onDismiss()
+                onFormatSelected(chosen)
+            }) {
                 Text(stringResource(R.string.export))
             }
         },

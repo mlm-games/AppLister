@@ -3,6 +3,9 @@ package app.applister.data.model
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import androidx.core.net.toUri
 
 enum class AppStore(val displayName: String) {
@@ -13,45 +16,70 @@ enum class AppStore(val displayName: String) {
     HUAWEI("AppGallery");
 
     fun openApp(context: Context, packageName: String): StoreOpenResult {
-        val pm = context.packageManager
-
-        val deepLinkIntent = getDeepLinkIntent(packageName)
-        val canHandleDeepLink = deepLinkIntent.resolveActivity(pm) != null
-
-        val intentToUse = if (canHandleDeepLink) {
-            deepLinkIntent
-        } else {
-            getWebIntent(packageName)
+        if (!packageName.isValidPackageName()) {
+            return StoreOpenResult.Error("Invalid package name")
         }
+        val pm = context.packageManager
+        val safePackage = Uri.encode(packageName)
 
-        return try {
-            context.startActivity(intentToUse.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            StoreOpenResult.Success
-        } catch (_: ActivityNotFoundException) {
+        val deepLinkIntent = getDeepLinkIntent(safePackage)
+        val webIntent = getWebIntent(safePackage)
+
+        val deepLinkOk = canHandle(pm, deepLinkIntent)
+        if (deepLinkOk && tryStart(context, deepLinkIntent)) return StoreOpenResult.Success
+        if (tryStart(context, webIntent)) return StoreOpenResult.Success
+        return if (canHandle(pm, webIntent)) {
+            StoreOpenResult.Error("Could not open store link")
+        } else {
             StoreOpenResult.NoAppFound
-        } catch (e: Exception) {
-            StoreOpenResult.Error(e.message ?: "Unknown error")
         }
     }
 
-    private fun getDeepLinkIntent(packageName: String): Intent {
+    private fun canHandle(pm: PackageManager, intent: Intent): Boolean {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.resolveActivity(
+                    intent,
+                    PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_DEFAULT_ONLY.toLong())
+                ) != null
+            } else {
+                @Suppress("DEPRECATION")
+                pm.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY) != null
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun tryStart(context: Context, intent: Intent): Boolean {
+        return try {
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            true
+        } catch (_: ActivityNotFoundException) {
+            false
+        } catch (_: SecurityException) {
+            false
+        }
+    }
+
+    private fun getDeepLinkIntent(encodedPackage: String): Intent {
         val uri = when (this) {
-            PLAY_STORE -> "market://details?id=$packageName".toUri()
-            FDROID -> "fdroid.app://details?id=$packageName".toUri()
-            AMAZON -> "amzn://apps/android?p=$packageName".toUri()
-            SAMSUNG -> "samsungapps://ProductDetail/$packageName".toUri()
-            HUAWEI -> "appmarket://details?id=$packageName".toUri()
+            PLAY_STORE -> "market://details?id=$encodedPackage".toUri()
+            FDROID -> "fdroid.app://details?id=$encodedPackage".toUri()
+            AMAZON -> "amzn://apps/android?p=$encodedPackage".toUri()
+            SAMSUNG -> "samsungapps://ProductDetail/$encodedPackage".toUri()
+            HUAWEI -> "appmarket://details?id=$encodedPackage".toUri()
         }
         return Intent(Intent.ACTION_VIEW, uri)
     }
 
-    private fun getWebIntent(packageName: String): Intent {
+    private fun getWebIntent(encodedPackage: String): Intent {
         val url = when (this) {
-            PLAY_STORE -> "https://play.google.com/store/apps/details?id=$packageName"
-            FDROID -> "https://f-droid.org/packages/$packageName"
-            AMAZON -> "https://www.amazon.com/gp/mas/dl/android?p=$packageName"
-            SAMSUNG -> "https://galaxystore.samsung.com/detail/$packageName"
-            HUAWEI -> "https://appgallery.huawei.com/app/$packageName"
+            PLAY_STORE -> "https://play.google.com/store/apps/details?id=$encodedPackage"
+            FDROID -> "https://f-droid.org/packages/$encodedPackage"
+            AMAZON -> "https://www.amazon.com/gp/mas/dl/android?p=$encodedPackage"
+            SAMSUNG -> "https://galaxystore.samsung.com/detail/$encodedPackage"
+            HUAWEI -> "https://appgallery.huawei.com/app/$encodedPackage"
         }
         return Intent(Intent.ACTION_VIEW, url.toUri())
     }
@@ -65,7 +93,6 @@ enum class AppStore(val displayName: String) {
             HUAWEI -> "AppGallery not installed"
         }
     }
-
 
     fun getGuidanceMessage(): String {
         return when (this) {

@@ -1,6 +1,5 @@
 package app.applister.ui.screens
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,8 +14,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -31,25 +30,20 @@ fun SettingsScreen(
     vm: SettingsViewModel,
     onBack: () -> Unit
 ) {
-    val settings by vm.settings.collectAsState()
+    val settings by vm.settings.collectAsStateWithLifecycle()
 
     SettingsScaffold(
         title = stringResource(R.string.settings),
         onBack = onBack
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            AutoSettingsScreen(
-                schema = AppSettingsSchema,
-                value = settings,
-                onSet = { name, value -> vm.set(name, value) },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(
-                        top = paddingValues.calculateTopPadding(),
-                        bottom = paddingValues.calculateBottomPadding(),
-                    )
-            )
-        }
+        AutoSettingsScreen(
+            schema = AppSettingsSchema,
+            value = settings,
+            onSet = { name, value -> vm.setField(name, value) },
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        )
     }
 }
 

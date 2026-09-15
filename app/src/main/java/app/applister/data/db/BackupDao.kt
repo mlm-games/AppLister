@@ -9,13 +9,16 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface BackupDao {
-    @Query("SELECT * FROM backup_records ORDER BY createdAt DESC")
+    @Query("SELECT * FROM backup_records ORDER BY createdAt DESC, id DESC")
     fun allBackups(): Flow<List<BackupRecord>>
 
-    @Query("SELECT * FROM backup_records WHERE isAutoBackup = 1 ORDER BY createdAt DESC")
+    @Query("SELECT * FROM backup_records ORDER BY createdAt DESC, id DESC")
+    suspend fun snapshot(): List<BackupRecord>
+
+    @Query("SELECT * FROM backup_records WHERE isAutoBackup = 1 ORDER BY createdAt DESC, id DESC")
     suspend fun autoBackups(): List<BackupRecord>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(record: BackupRecord): Long
 
     @Delete

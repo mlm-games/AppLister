@@ -7,7 +7,6 @@ import android.view.WindowInsets
 import android.view.WindowInsetsController
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 
@@ -15,17 +14,41 @@ import androidx.compose.ui.platform.LocalView
 fun SystemUIController(showStatusBar: Boolean) {
     val view = LocalView.current
     val context = LocalContext.current
-    val window = remember { (context as? Activity)?.window }
+    val window = (context as? Activity)?.window
 
-    DisposableEffect(showStatusBar) {
-        if (window != null) {
+    DisposableEffect(showStatusBar, window, view) {
+        if (window == null) {
+            onDispose { }
+        } else {
+            // Remember pre-existing state so dispose restores it.
+            val prevBehavior = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                window.insetsController?.systemBarsBehavior
+            } else {
+                null
+            }
+            @Suppress("DEPRECATION")
+            val prevVisibility = view.systemUiVisibility
             if (showStatusBar) {
                 showStatusBar(window, view)
             } else {
                 hideStatusBar(window, view)
             }
+            onDispose {
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        window.insetsController?.let {
+                            it.show(WindowInsets.Type.statusBars())
+                            if (prevBehavior != null) {
+                                it.systemBarsBehavior = prevBehavior
+                            }
+                        }
+                    } else {
+                        @Suppress("DEPRECATION")
+                        view.systemUiVisibility = prevVisibility
+                    }
+                } catch (_: Exception) { }
+            }
         }
-        onDispose { }
     }
 }
 
@@ -38,9 +61,7 @@ private fun showStatusBar(window: android.view.Window, view: View) {
             view.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
                     View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
         }
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
+    } catch (_: Exception) { }
 }
 
 private fun hideStatusBar(window: android.view.Window, view: View) {
@@ -55,7 +76,5 @@ private fun hideStatusBar(window: android.view.Window, view: View) {
             view.systemUiVisibility = View.SYSTEM_UI_FLAG_IMMERSIVE or
                     View.SYSTEM_UI_FLAG_FULLSCREEN
         }
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
+    } catch (_: Exception) { }
 }

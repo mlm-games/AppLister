@@ -30,10 +30,12 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -41,15 +43,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.applister.AppGraph
 import app.applister.R
 import app.applister.data.model.AppInfo
 import app.applister.data.model.AppStore
 import app.applister.data.model.StoreOpenResult
-import app.applister.data.repository.AppSettings
+import app.applister.helper.registerPackageChanges
 import app.applister.ui.components.AppIcon
 import app.applister.ui.components.AppTopBar
 import app.applister.viewmodel.AppDetailViewModel
+import app.applister.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -59,15 +63,39 @@ import java.util.Locale
 fun AppDetailScreen(
     packageName: String,
     vm: AppDetailViewModel,
+    settingsVM: SettingsViewModel,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    val settings by AppGraph.settings.flow.collectAsState(initial = AppSettings())
+    val settings by settingsVM.settings.collectAsStateWithLifecycle()
 
-    val appInfo: AppInfo? = remember(packageName) {
-        AppGraph.appListRepo.getAppInfo(packageName)
+    fun show(message: String) {
+        scope.launch {
+            try {
+                snackbarHostState.showSnackbar(message)
+            } catch (_: Exception) { }
+        }
+    }
+
+    var refreshTick by remember(packageName) { mutableStateOf(0) }
+    androidx.compose.runtime.DisposableEffect(context, packageName) {
+        val receiver = context.registerPackageChanges { refreshTick++ }
+        onDispose {
+            try { context.unregisterReceiver(receiver) } catch (_: Exception) {}
+        }
+    }
+    val appInfo: AppInfo? = remember(packageName, refreshTick) {
+        try {
+            AppGraph.appListRepo.getAppInfo(packageName)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    LaunchedEffect(appInfo) {
+        if (refreshTick > 0 && appInfo == null) onBack()
     }
 
     Scaffold(
@@ -202,7 +230,11 @@ fun AppDetailScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             FilledTonalButton(
-                                onClick = { vm.launchApp(context, appInfo.packageName) },
+                                onClick = {
+                                    if (!vm.launchApp(context, appInfo.packageName)) {
+                                        show(context.getString(R.string.open_store_failed, appInfo.appName))
+                                    }
+                                },
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Icon(
@@ -219,20 +251,19 @@ fun AppDetailScreen(
                                         is StoreOpenResult.Success -> { /* No action needed */ }
                                         is StoreOpenResult.NoAppFound -> {
                                             scope.launch {
-                                                snackbarHostState.showSnackbar(
-                                                    message = store.getMissingStoreMessage(),
-                                                    actionLabel = "Help"
-                                                ).let { response ->
+                                                try {
+                                                    val response = snackbarHostState.showSnackbar(
+                                                        message = store.getMissingStoreMessage(),
+                                                        actionLabel = context.getString(R.string.help)
+                                                    )
                                                     if (response == androidx.compose.material3.SnackbarResult.ActionPerformed) {
                                                         snackbarHostState.showSnackbar(store.getGuidanceMessage())
                                                     }
-                                                }
+                                                } catch (_: Exception) { }
                                             }
                                         }
                                         is StoreOpenResult.Error -> {
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("Error: ${result.message}")
-                                            }
+                                            show(context.getString(R.string.open_store_failed, result.message))
                                         }
                                     }
                                 },
@@ -254,7 +285,11 @@ fun AppDetailScreen(
                             OutlinedButton(
                                 onClick = {
                                     val store = AppStore.fromIndex(settings.preferredStore)
-                                    vm.shareApp(context, appInfo.packageName, appInfo.appName, store)
+                                    when (val r = vm.shareApp(context, appInfo.packageName, appInfo.appName, store)) {
+                                        is AppDetailViewModel.DetailActionResult.Done -> Unit
+                                        is AppDetailViewModel.DetailActionResult.Failed ->
+                                            show(context.getString(R.string.share_failed, r.reason))
+                                    }
                                 },
                                 modifier = Modifier.weight(1f)
                             ) {
@@ -266,7 +301,13 @@ fun AppDetailScreen(
                                 Text(stringResource(R.string.share))
                             }
                             OutlinedButton(
-                                onClick = { vm.openAppInfo(context, appInfo.packageName) },
+                                onClick = {
+                                    when (val r = vm.openAppInfo(context, appInfo.packageName)) {
+                                        is AppDetailViewModel.DetailActionResult.Done -> Unit
+                                        is AppDetailViewModel.DetailActionResult.Failed ->
+                                            show(context.getString(R.string.open_store_failed, r.reason))
+                                    }
+                                },
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Icon(
@@ -280,7 +321,13 @@ fun AppDetailScreen(
 
                         if (!appInfo.isSystemApp) {
                             OutlinedButton(
-                                onClick = { vm.uninstallApp(context, appInfo.packageName) },
+                                onClick = {
+                                    when (val r = vm.uninstallApp(context, appInfo.packageName)) {
+                                        is AppDetailViewModel.DetailActionResult.Done -> Unit
+                                        is AppDetailViewModel.DetailActionResult.Failed ->
+                                            show(context.getString(R.string.open_store_failed, r.reason))
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Icon(
@@ -316,7 +363,14 @@ private fun DetailRow(label: String, value: String, mono: Boolean = false) {
     }
 }
 
+private val timestampFormat: ThreadLocal<SimpleDateFormat> = ThreadLocal.withInitial {
+    SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
+}
+
 private fun formatTimestamp(millis: Long): String {
-    val sdf = SimpleDateFormat("MMM dd, yyyy 'at' HH:mm", Locale.getDefault())
-    return sdf.format(Date(millis))
+    return try {
+        timestampFormat.get()?.format(Date(millis)) ?: Date(millis).toString()
+    } catch (_: Exception) {
+        Date(millis).toString()
+    }
 }

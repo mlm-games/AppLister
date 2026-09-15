@@ -18,6 +18,12 @@ import app.applister.viewmodel.BackupListViewModel
 import app.applister.viewmodel.SettingsViewModel
 import kotlinx.serialization.Serializable
 
+fun NavBackStack<NavKey>.popSafe(): Boolean {
+    if (size <= 1) return false
+    removeAt(lastIndex)
+    return true
+}
+
 @Composable
 fun NavGraph(
     backStack: NavBackStack<NavKey>,
@@ -27,13 +33,14 @@ fun NavGraph(
 ) {
     NavDisplay(
         backStack = backStack,
-        onBack = { backStack.removeAt(backStack.lastIndex) },
+        onBack = { backStack.popSafe() },
         entryDecorators = decorators,
         entryProvider = entryProvider {
 
             entry<Screen.Home> {
                 AppListScreen(
                     vm = appListVM,
+                    settingsVM = settingsVM,
                     onOpenSettings = { backStack.add(Screen.Settings) },
                     onOpenBackups = { backStack.add(Screen.Backups) },
                     onOpenApp = { pkg -> backStack.add(Screen.AppDetail(pkg)) }
@@ -41,11 +48,14 @@ fun NavGraph(
             }
 
             entry<Screen.AppDetail> { args ->
-                val detailVM: AppDetailViewModel = viewModel { AppDetailViewModel() }
+                val detailVM: AppDetailViewModel = viewModel(key = "detail_${args.packageName}") {
+                    AppDetailViewModel()
+                }
                 AppDetailScreen(
                     packageName = args.packageName,
                     vm = detailVM,
-                    onBack = { backStack.removeAt(backStack.lastIndex) }
+                    settingsVM = settingsVM,
+                    onBack = { backStack.popSafe() }
                 )
             }
 
@@ -56,14 +66,15 @@ fun NavGraph(
                 BackupListScreen(
                     vm = backupListVM,
                     appListVM = appListVM,
-                    onBack = { backStack.removeAt(backStack.lastIndex) }
+                    settingsVM = settingsVM,
+                    onBack = { backStack.popSafe() }
                 )
             }
 
             entry<Screen.Settings> {
                 SettingsScreen(
                     vm = settingsVM,
-                    onBack = { backStack.removeAt(backStack.lastIndex) }
+                    onBack = { backStack.popSafe() }
                 )
             }
         }

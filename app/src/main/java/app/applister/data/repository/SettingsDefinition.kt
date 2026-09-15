@@ -1,5 +1,9 @@
 package app.applister.data.repository
 
+import app.applister.data.Constants
+import app.applister.data.model.AppStore
+import app.applister.data.model.FilterMode
+import app.applister.data.model.SortMode
 import io.github.mlmgames.settings.core.annotations.CategoryDefinition
 import io.github.mlmgames.settings.core.annotations.Setting
 import io.github.mlmgames.settings.core.types.Dropdown
@@ -90,7 +94,7 @@ data class AppSettings(
         type = Dropdown::class,
         options = ["Markdown", "Plain Text", "JSON", "HTML"]
     )
-    val autoBackupFormat: Int = 2,
+    val autoBackupFormat: Int = Constants.ExportFormat.JSON,
 
     @Setting(
         title = "Default Export Format",
@@ -99,5 +103,36 @@ data class AppSettings(
         type = Dropdown::class,
         options = ["Markdown", "Plain Text", "JSON", "HTML"]
     )
-    val defaultExportFormat: Int = 2
+    val defaultExportFormat: Int = Constants.ExportFormat.JSON
 )
+
+object AppSettingsValidator {
+    fun validate() {
+        check(SortMode.entries.size == 9) {
+            "SortMode.entries size changed (${SortMode.entries.size}); " +
+                "AppSettings.defaultSort options must be updated + migration added"
+        }
+        check(FilterMode.entries.size == 3) {
+            "FilterMode.entries size changed; AppSettings.defaultFilter options must match"
+        }
+        check(AppStore.entries.size == 5) {
+            "AppStore.entries size changed; AppSettings.preferredStore options must match"
+        }
+        check(Constants.ExportFormat.MARKDOWN == 0 && Constants.ExportFormat.PLAIN_TEXT == 1 &&
+            Constants.ExportFormat.JSON == 2 && Constants.ExportFormat.HTML == 3) {
+            "ExportFormat indices changed; autoBackupFormat/defaultExportFormat options must match"
+        }
+        check(SortMode.entries.first() == SortMode.NAME_ASC &&
+            SortMode.entries.last() == SortMode.PACKAGE_NAME) {
+            "SortMode order changed; stored defaultSort indices would remap"
+        }
+        check(FilterMode.entries.first() == FilterMode.ALL &&
+            FilterMode.entries.last() == FilterMode.SYSTEM) {
+            "FilterMode order changed; stored defaultFilter indices would remap"
+        }
+        check(AppStore.entries.first() == AppStore.PLAY_STORE &&
+            AppStore.entries.last() == AppStore.HUAWEI) {
+            "AppStore order changed; stored preferredStore indices would remap"
+        }
+    }
+}

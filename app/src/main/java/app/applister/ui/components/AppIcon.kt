@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.applister.R
@@ -26,22 +27,26 @@ fun AppIcon(
     modifier: Modifier = Modifier,
     size: Dp = 44.dp
 ) {
-    val context = LocalContext.current
+    val appContext = LocalContext.current.applicationContext
     val tint = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
     val basePainter = painterResource(R.drawable.ic_app_placeholder)
     val placeholder = remember(basePainter, tint) {
         TintedPainter(basePainter, tint)
     }
-    val model = remember(packageName) {
-        ImageRequest.Builder(context)
+    val model = remember(packageName, size, appContext) {
+        val px = with(appContext.resources.displayMetrics) {
+            (size.value * density).toInt().coerceAtLeast(1)
+        }
+        ImageRequest.Builder(appContext)
             .data(PackageIcon(packageName))
+            .size(px, px)
             .crossfade(true)
             .build()
     }
 
     AsyncImage(
         model = model,
-        contentDescription = null,
+        contentDescription = stringResource(R.string.app_icon_desc, packageName),
         modifier = modifier
             .size(size)
             .clip(RoundedCornerShape(8.dp)),
@@ -51,7 +56,10 @@ fun AppIcon(
     )
 }
 
-data class PackageIcon(val packageName: String)
+data class PackageIcon(
+    val packageName: String,
+    val targetPx: Int? = null
+)
 
 private class TintedPainter(
     private val delegate: Painter,

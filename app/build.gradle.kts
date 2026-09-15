@@ -21,7 +21,7 @@ android {
         applicationId = "app.applister"
         minSdk = 24
         targetSdk = 37
-        versionCode = 100161
+        versionCode = 100171
         versionName = "1.0.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -134,4 +134,7 @@ dependencies {
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
 
     debugImplementation(libs.androidx.ui.tooling)
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation(libs.kotlin.stdlib)
 }

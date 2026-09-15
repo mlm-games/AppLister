@@ -89,6 +89,9 @@
     <string name="installed_apps">Installed Apps</string>
     <string name="install_missing">Install Missing</string>
     <string name="was_version">Was: v%s</string>
+    <string name="version_outdated">Installed version is older than backup</string>
+    <string name="version_newer">Installed version is newer than backup</string>
+    <string name="skipped_invalid_entries">Skipped %d invalid entries</string>
     <string name="install_from_play_store">Install from Play Store</string>
     <string name="no_backups_yet">No backups yet</string>
     <string name="create_backup_from_menu">Create one from the main menu</string>
@@ -127,4 +130,23 @@
     <string name="failed_load_apps">Failed to load apps: %s</string>
     <string name="backup_failed_msg">Backup failed: %s</string>
     <string name="restore_failed">Restore failed: %s</string>
+    <string name="app_icon_desc">Icon for %s</string>
+    <string name="help">Help</string>
+    <string name="open_store_failed">Could not open store: %s</string>
+    <string name="no_apps_to_export">Nothing to export</string>
+    <string name="export_failed">Export failed: %s</string>
+    <string name="share_failed">Share failed: %s</string>
+    <string name="missing_backup_file">Backup file is missing</string>
+    <string name="backup_file_unreadable">Backup file cannot be read: %s</string>
+    <string name="only_json_restorable">Only JSON backups can be restored</string>
+    <string name="delete_failed">Could not delete backup file: %s</string>
+    <string name="stale_cleaned">Removed %d missing backup record</string>
+    <string name="confirm_delete_title">Delete backup?</string>
+    <string name="confirm_delete_message">Delete %s? This cannot be undone.</string>
+    <string name="delete">Delete</string>
+    <string name="restoring">Restoring…</string>
+    <string name="retry">Retry</string>
+    <string name="load_failed">Could not load apps</string>
+    <string name="no_results_for_query">No results for “%s”</string>
+    <string name="clear_search">Clear search</string>
 </resources>
