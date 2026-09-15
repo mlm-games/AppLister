@@ -32,7 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -79,7 +79,7 @@ fun AppDetailScreen(
         }
     }
 
-    var refreshTick by remember(packageName) { mutableStateOf(0) }
+    var refreshTick by remember(packageName) { mutableIntStateOf(0) }
     androidx.compose.runtime.DisposableEffect(context, packageName) {
         val receiver = context.registerPackageChanges { refreshTick++ }
         onDispose {
@@ -135,6 +135,10 @@ fun AppDetailScreen(
                 )
             }
         } else {
+            val openFailedForApp = stringResource(R.string.open_store_failed, appInfo.appName)
+            val helpLabel = stringResource(R.string.help)
+            val openStoreFailedFormat = stringResource(R.string.open_store_failed)
+            val shareFailedFormat = stringResource(R.string.share_failed)
             Column(
                 modifier = Modifier
                     .padding(pad)
@@ -232,7 +236,7 @@ fun AppDetailScreen(
                             FilledTonalButton(
                                 onClick = {
                                     if (!vm.launchApp(context, appInfo.packageName)) {
-                                        show(context.getString(R.string.open_store_failed, appInfo.appName))
+                                        show(openFailedForApp)
                                     }
                                 },
                                 modifier = Modifier.weight(1f)
@@ -254,7 +258,7 @@ fun AppDetailScreen(
                                                 try {
                                                     val response = snackbarHostState.showSnackbar(
                                                         message = store.getMissingStoreMessage(),
-                                                        actionLabel = context.getString(R.string.help)
+                                                        actionLabel = helpLabel
                                                     )
                                                     if (response == androidx.compose.material3.SnackbarResult.ActionPerformed) {
                                                         snackbarHostState.showSnackbar(store.getGuidanceMessage())
@@ -263,7 +267,7 @@ fun AppDetailScreen(
                                             }
                                         }
                                         is StoreOpenResult.Error -> {
-                                            show(context.getString(R.string.open_store_failed, result.message))
+                                            show(openStoreFailedFormat.format(result.message))
                                         }
                                     }
                                 },
@@ -288,7 +292,7 @@ fun AppDetailScreen(
                                     when (val r = vm.shareApp(context, appInfo.packageName, appInfo.appName, store)) {
                                         is AppDetailViewModel.DetailActionResult.Done -> Unit
                                         is AppDetailViewModel.DetailActionResult.Failed ->
-                                            show(context.getString(R.string.share_failed, r.reason))
+                                            show(shareFailedFormat.format(r.reason))
                                     }
                                 },
                                 modifier = Modifier.weight(1f)
@@ -305,7 +309,7 @@ fun AppDetailScreen(
                                     when (val r = vm.openAppInfo(context, appInfo.packageName)) {
                                         is AppDetailViewModel.DetailActionResult.Done -> Unit
                                         is AppDetailViewModel.DetailActionResult.Failed ->
-                                            show(context.getString(R.string.open_store_failed, r.reason))
+                                            show(openStoreFailedFormat.format(r.reason))
                                     }
                                 },
                                 modifier = Modifier.weight(1f)
@@ -325,7 +329,7 @@ fun AppDetailScreen(
                                     when (val r = vm.uninstallApp(context, appInfo.packageName)) {
                                         is AppDetailViewModel.DetailActionResult.Done -> Unit
                                         is AppDetailViewModel.DetailActionResult.Failed ->
-                                            show(context.getString(R.string.open_store_failed, r.reason))
+                                            show(openStoreFailedFormat.format(r.reason))
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth()

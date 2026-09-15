@@ -123,6 +123,11 @@ fun AppListScreen(
     var showExportDialog by rememberSaveable { mutableStateOf(false) }
     var showAboutDialog by rememberSaveable { mutableStateOf(false) }
 
+    val restoreFailedFormat = stringResource(R.string.restore_failed)
+    val shareFailedFormat = stringResource(R.string.share_failed)
+    val noAppsToExportMessage = stringResource(R.string.no_apps_to_export)
+    val exportFailedFormat = stringResource(R.string.export_failed)
+
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -134,12 +139,12 @@ fun AppListScreen(
                     if (!json.isNullOrBlank()) {
                         vm.restoreFromJson(json)
                     } else {
-                        snackbarHostState.showSnackbar(ctx.getString(R.string.restore_failed, "empty file"))
+                        snackbarHostState.showSnackbar(restoreFailedFormat.format("empty file"))
                     }
                 } catch (t: Throwable) {
                     t.printStackTrace()
                     try {
-                        snackbarHostState.showSnackbar(ctx.getString(R.string.restore_failed, t.message ?: ""))
+                        snackbarHostState.showSnackbar(restoreFailedFormat.format(t.message ?: ""))
                     } catch (_: Exception) { }
                 }
             }
@@ -455,18 +460,18 @@ fun AppListScreen(
                         when (val r = ShareUtils.shareTextFile(ctx, "applister.$ext", content, mime)) {
                             is ShareResult.Shared -> vm.exitSelectionMode()
                             is ShareResult.Failed -> snackbarHostState.showSnackbar(
-                                ctx.getString(R.string.share_failed, r.reason)
+                                shareFailedFormat.format(r.reason)
                             )
                         }
                     } catch (e: IllegalStateException) {
                         try {
-                            snackbarHostState.showSnackbar(ctx.getString(R.string.no_apps_to_export))
+                            snackbarHostState.showSnackbar(noAppsToExportMessage)
                         } catch (_: Exception) { }
                     } catch (t: Throwable) {
                         t.printStackTrace()
                         try {
                             snackbarHostState.showSnackbar(
-                                ctx.getString(R.string.export_failed, t.message ?: "")
+                                exportFailedFormat.format(t.message ?: "")
                             )
                         } catch (_: Exception) { }
                     }

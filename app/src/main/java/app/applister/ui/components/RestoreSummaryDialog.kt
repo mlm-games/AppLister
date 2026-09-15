@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,9 +48,10 @@ fun RestoreSummaryDialog(
     onDismiss: () -> Unit,
     onStoreError: (String) -> Unit = {}
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val settings by settingsVM.settings.collectAsStateWithLifecycle()
     val preferredStore = remember(settings.preferredStore) { AppStore.fromIndex(settings.preferredStore) }
+    val openStoreFailedFormat = stringResource(R.string.open_store_failed)
 
     fun openStore(packageName: String) {
         when (val openResult = preferredStore.openApp(context, packageName)) {
@@ -58,7 +60,7 @@ fun RestoreSummaryDialog(
                 onStoreError(preferredStore.getMissingStoreMessage())
             }
             is StoreOpenResult.Error -> {
-                onStoreError(context.getString(R.string.open_store_failed, openResult.message))
+                onStoreError(openStoreFailedFormat.format(openResult.message))
             }
         }
     }

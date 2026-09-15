@@ -72,6 +72,13 @@ fun BackupListScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingDelete by remember { mutableStateOf<BackupRecord?>(null) }
 
+    val deleteFailedFormat = stringResource(R.string.delete_failed)
+    val staleCleanedFormat = stringResource(R.string.stale_cleaned)
+    val shareFailedFormat = stringResource(R.string.share_failed)
+    val backupUnreadableFormat = stringResource(R.string.backup_file_unreadable)
+    val missingBackupMessage = stringResource(R.string.missing_backup_file)
+    val onlyJsonRestorableMessage = stringResource(R.string.only_json_restorable)
+
     fun show(message: String) {
         scope.launch {
             try {
@@ -84,13 +91,13 @@ fun BackupListScreen(
         vm.events.collect { event ->
             when (event) {
                 is BackupListEvent.DeleteFailed ->
-                    show(ctx.getString(R.string.delete_failed, event.fileName))
+                    show(deleteFailedFormat.format(event.fileName))
                 is BackupListEvent.StaleCleaned ->
-                    show(ctx.getString(R.string.stale_cleaned, event.count))
+                    show(staleCleanedFormat.format(event.count))
                 is BackupListEvent.ShareFailed ->
-                    show(ctx.getString(R.string.share_failed, event.fileName))
+                    show(shareFailedFormat.format(event.fileName))
                 is BackupListEvent.ReadFailed ->
-                    show(ctx.getString(R.string.backup_file_unreadable, event.reason))
+                    show(backupUnreadableFormat.format(event.reason))
             }
         }
     }
@@ -162,19 +169,19 @@ fun BackupListScreen(
                         restoring = restoring,
                         onShare = {
                             if (missing) {
-                                show(ctx.getString(R.string.missing_backup_file))
+                                show(missingBackupMessage)
                             } else {
                                 when (val r = ShareUtils.shareFile(ctx, vm.getBackupFile(record), vm.shareMimeType(record))) {
                                     is ShareResult.Shared -> Unit
-                                    is ShareResult.Failed -> show(ctx.getString(R.string.share_failed, r.reason))
+                                    is ShareResult.Failed -> show(shareFailedFormat.format(r.reason))
                                 }
                             }
                         },
                         onRestore = {
                             if (missing) {
-                                show(ctx.getString(R.string.missing_backup_file))
+                                show(missingBackupMessage)
                             } else if (!restorable) {
-                                show(ctx.getString(R.string.only_json_restorable))
+                                show(onlyJsonRestorableMessage)
                             } else {
                                 scope.launch {
                                     vm.setRestoring(true)
@@ -184,7 +191,7 @@ fun BackupListScreen(
                                         onBack()
                                     } catch (t: Throwable) {
                                         t.printStackTrace()
-                                        show(ctx.getString(R.string.backup_file_unreadable, t.message ?: record.fileName))
+                                        show(backupUnreadableFormat.format(t.message ?: record.fileName))
                                     } finally {
                                         vm.setRestoring(false)
                                     }
