@@ -1,8 +1,8 @@
 [versions]
 activityCompose = "1.13.0"
 coreKtx = "1.19.1"
-datastorePreferences = "1.2.1"
-androidGradlePlugin = "9.4.1"
+datastorePreferences = "1.3.0"
+androidGradlePlugin = "9.5.0"
 kmpSettingsCore = "0.11.0"
 kotlinStdlib = "2.4.21"
 kotlinxSerializationJson = "1.12.0"
